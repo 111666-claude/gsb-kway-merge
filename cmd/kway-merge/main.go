@@ -18,6 +18,9 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	perStream := flags.Int("per-stream", 25, "每路的条目数")
 	counters := flags.Bool("counters", false, "打印 held 与 compared")
 	show := flags.Bool("show", false, "打印归并结果")
+	dedupe := flags.Bool("dedupe", false, "相邻重复值只输出一次")
+	limit := flags.Int("limit", -1, "只输出前 N 个（负数表示不限）")
+	desc := flags.Bool("desc", false, "用最大堆输出降序")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
@@ -27,7 +30,17 @@ func Run(args []string, stdout, stderr io.Writer) int {
 			data[s] = append(data[s], value)
 		}
 	}
-	merger := kwaymerge.New(data)
+	opts := []kwaymerge.Option{}
+	if *dedupe {
+		opts = append(opts, kwaymerge.WithDedupe())
+	}
+	if *limit >= 0 {
+		opts = append(opts, kwaymerge.WithLimit(*limit))
+	}
+	if *desc {
+		opts = append(opts, kwaymerge.WithDesc())
+	}
+	merger := kwaymerge.New(data, opts...)
 	out := []int{}
 	for {
 		value, ok := merger.Next()
